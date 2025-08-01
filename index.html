@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diary Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap');
+        
+        .diary-font {
+            font-family: 'Caveat', cursive;
+        }
+        
+        .note-paper {
+            background-color: #f5f5dc;
+            background-image: linear-gradient(#e8e8e8 1px, transparent 1px);
+            background-size: 100% 24px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body class="bg-blue-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8 diary-font text-blue-800">My Diary Notes</h1>
+        
+        <div class="max-w-3xl mx-auto">
+            <!-- Note Form -->
+            <div id="noteForm" class="bg-white rounded-lg shadow-md p-6 mb-8 note-paper">
+                <h2 class="text-xl font-semibold mb-4 diary-font text-blue-700" id="formTitle">Create New Note</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="subject" class="block text-sm font-medium text-gray-700 diary-font">Subject</label>
+                        <input type="text" id="subject" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2 bg-blue-50 border-0 diary-font">
+                    </div>
+                    <div>
+                        <label for="subtopic" class="block text-sm font-medium text-gray-700 diary-font">Subtopic</label>
+                        <input type="text" id="subtopic" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2 bg-blue-50 border-0 diary-font">
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="date" class="block text-sm font-medium text-gray-700 diary-font">Date</label>
+                    <input type="date" id="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2 bg-blue-50 border-0 diary-font">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="content" class="block text-sm font-medium text-gray-700 diary-font">Notes</label>
+                    <textarea id="content" rows="10" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2 bg-blue-50 border-0 diary-font custom-scrollbar"></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button id="cancelEdit" class="hidden px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 diary-font">Cancel</button>
+                    <button id="saveNote" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 diary-font">Save Note</button>
+                </div>
+            </div>
+            
+            <!-- Notes List -->
+            <div id="notesList" class="space-y-4">
+                <h2 class="text-xl font-semibold mb-4 diary-font text-blue-700">Your Notes</h2>
+                <div id="noNotesMessage" class="text-center py-8 text-gray-500 diary-font">
+                    No notes yet. Create your first note above!
+                </div>
+                <!-- Notes will be inserted here by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center py-4 text-gray-400 text-xs diary-font">
+        <p>Created by work.aditipatwa@gmail.com</p>
+        <p>All rights reserved</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const noteForm = document.getElementById('noteForm');
+            const subjectInput = document.getElementById('subject');
+            const subtopicInput = document.getElementById('subtopic');
+            const dateInput = document.getElementById('date');
+            const contentInput = document.getElementById('content');
+            const saveNoteBtn = document.getElementById('saveNote');
+            const cancelEditBtn = document.getElementById('cancelEdit');
+            const notesList = document.getElementById('notesList');
+            const noNotesMessage = document.getElementById('noNotesMessage');
+            const formTitle = document.getElementById('formTitle');
+            
+            // State
+            let notes = JSON.parse(localStorage.getItem('diaryNotes')) || [];
+            let editingNoteId = null;
+            
+            // Set today's date as default
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+            
+            // Display notes
+            displayNotes();
+            
+            // Save note
+            saveNoteBtn.addEventListener('click', function() {
+                const subject = subjectInput.value.trim();
+                const subtopic = subtopicInput.value.trim();
+                const date = dateInput.value;
+                const content = contentInput.value.trim();
+                
+                if (!subject || !content) {
+                    alert('Subject and Notes content are required!');
+                    return;
+                }
+                
+                if (editingNoteId !== null) {
+                    // Update existing note
+                    const noteIndex = notes.findIndex(note => note.id === editingNoteId);
+                    if (noteIndex !== -1) {
+                        notes[noteIndex] = {
+                            id: editingNoteId,
+                            subject,
+                            subtopic,
+                            date,
+                            content,
+                            createdAt: notes[noteIndex].createdAt,
+                            updatedAt: new Date().toISOString()
+                        };
+                    }
+                } else {
+                    // Create new note
+                    const newNote = {
+                        id: Date.now().toString(),
+                        subject,
+                        subtopic,
+                        date,
+                        content,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    notes.unshift(newNote);
+                }
+                
+                // Save to localStorage
+                localStorage.setItem('diaryNotes', JSON.stringify(notes));
+                
+                // Reset form
+                resetForm();
+                
+                // Update display
+                displayNotes();
+            });
+            
+            // Cancel edit
+            cancelEditBtn.addEventListener('click', resetForm);
+            
+            // Display notes in the list
+            function displayNotes() {
+                if (notes.length === 0) {
+                    noNotesMessage.classList.remove('hidden');
+                    notesList.innerHTML = '';
+                    return;
+                }
+                
+                noNotesMessage.classList.add('hidden');
+                
+                notesList.innerHTML = '';
+                
+                notes.forEach(note => {
+                    const noteElement = document.createElement('div');
+                    noteElement.className = 'bg-white rounded-lg shadow-md p-6 note-paper hover:shadow-lg transition-shadow duration-200';
+                    noteElement.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-lg font-semibold diary-font text-blue-700">${note.subject}</h3>
+                            <span class="text-xs text-gray-500 diary-font">${formatDate(note.date)}</span>
+                        </div>
+                        ${note.subtopic ? `<p class="text-sm text-gray-600 mb-2 diary-font">${note.subtopic}</p>` : ''}
+                        <div class="text-gray-700 mb-4 whitespace-pre-line diary-font max-h-32 overflow-y-auto custom-scrollbar">${note.content}</div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-400 diary-font">Last updated: ${formatDateTime(note.updatedAt)}</span>
+                            <div class="space-x-2">
+                                <button class="edit-btn px-3 py-1 bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200 text-sm diary-font" data-id="${note.id}">Edit</button>
+                                <button class="delete-btn px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm diary-font" data-id="${note.id}">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    notesList.appendChild(noteElement);
+                });
+                
+                // Add event listeners to edit and delete buttons
+                document.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const noteId = this.getAttribute('data-id');
+                        editNote(noteId);
+                    });
+                });
+                
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const noteId = this.getAttribute('data-id');
+                        deleteNote(noteId);
+                    });
+                });
+            }
+            
+            // Edit note
+            function editNote(noteId) {
+                const note = notes.find(n => n.id === noteId);
+                if (!note) return;
+                
+                editingNoteId = noteId;
+                subjectInput.value = note.subject;
+                subtopicInput.value = note.subtopic || '';
+                dateInput.value = note.date;
+                contentInput.value = note.content;
+                
+                formTitle.textContent = 'Edit Note';
+                cancelEditBtn.classList.remove('hidden');
+                
+                // Scroll to form
+                noteForm.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            // Delete note
+            function deleteNote(noteId) {
+                if (confirm('Are you sure you want to delete this note?')) {
+                    notes = notes.filter(note => note.id !== noteId);
+                    localStorage.setItem('diaryNotes', JSON.stringify(notes));
+                    displayNotes();
+                    
+                    // If we were editing this note, reset the form
+                    if (editingNoteId === noteId) {
+                        resetForm();
+                    }
+                }
+            }
+            
+            // Reset form
+            function resetForm() {
+                subjectInput.value = '';
+                subtopicInput.value = '';
+                dateInput.value = today;
+                contentInput.value = '';
+                editingNoteId = null;
+                formTitle.textContent = 'Create New Note';
+                cancelEditBtn.classList.add('hidden');
+            }
+            
+            // Format date for display
+            function formatDate(dateString) {
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                return new Date(dateString).toLocaleDateString(undefined, options);
+            }
+            
+            // Format date and time for display
+            function formatDateTime(dateTimeString) {
+                const date = new Date(dateTimeString);
+                return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+        });
+    </script>
+</body>
+</html>
